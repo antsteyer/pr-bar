@@ -1,0 +1,5 @@
+.build/
+PRBar.app/
+.DS_Store
+*.o
+*.swp
