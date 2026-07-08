@@ -48,6 +48,7 @@ struct PullRequest: Identifiable, Decodable {
     let repository: Repository
     let author: Author?
     let mergeable: String?
+    let reviewDecision: String?
     let commits: CommitConnection
     let assignees: UserConnection
     let reviewRequests: ReviewRequestConnection
@@ -68,6 +69,26 @@ struct PullRequest: Identifiable, Decodable {
     }
 
     var hasConflicts: Bool { mergeable == "CONFLICTING" }
+
+    enum ReviewStatus: Equatable {
+        case approved, changesRequested, commented, none
+    }
+
+    /// GitHub's aggregate decision (APPROVED/CHANGES_REQUESTED) when available, falling back to
+    /// the latest review per reviewer to also surface plain comments.
+    var reviewStatus: ReviewStatus {
+        switch reviewDecision {
+        case "APPROVED": return .approved
+        case "CHANGES_REQUESTED": return .changesRequested
+        default:
+            let latestStatePerReviewer = Dictionary(
+                grouping: reviews.nodes.filter { $0.author?.login != author?.login },
+                by: { $0.author?.login }
+            ).compactMapValues { $0.last?.state }
+            if latestStatePerReviewer.values.contains("COMMENTED") { return .commented }
+            return .none
+        }
+    }
 
     var checkState: CheckState {
         guard let state = commits.nodes.first?.commit.statusCheckRollup?.state else { return .none }

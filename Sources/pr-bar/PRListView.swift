@@ -150,6 +150,35 @@ private struct AvatarCluster: View {
     }
 }
 
+private extension PullRequest.ReviewStatus {
+    var icon: String {
+        switch self {
+        case .approved: return "checkmark.circle.fill"
+        case .changesRequested: return "xmark.circle.fill"
+        case .commented: return "bubble.left.fill"
+        case .none: return ""
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .approved: return .green
+        case .changesRequested: return .red
+        case .commented: return .secondary
+        case .none: return .clear
+        }
+    }
+
+    var label: String {
+        switch self {
+        case .approved: return "Approved"
+        case .changesRequested: return "Changes requested"
+        case .commented: return "Commented"
+        case .none: return ""
+        }
+    }
+}
+
 private extension CheckState {
     var color: Color {
         switch self {
@@ -216,6 +245,12 @@ private struct PRRow: View {
                                 .padding(.vertical, 1)
                                 .background(Color.secondary.opacity(0.2))
                                 .clipShape(RoundedRectangle(cornerRadius: 3))
+                        }
+
+                        if pr.reviewStatus != .none {
+                            Image(systemName: pr.reviewStatus.icon)
+                                .foregroundStyle(pr.reviewStatus.color)
+                                .help(pr.reviewStatus.label)
                         }
 
                         Spacer()

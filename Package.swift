@@ -2,9 +2,9 @@
 import PackageDescription
 
 let package = Package(
-    name: "PRBar",
+    name: "pr-bar",
     platforms: [.macOS(.v14)],
     targets: [
-        .executableTarget(name: "PRBar", path: "Sources/PRBar")
+        .executableTarget(name: "pr-bar", path: "Sources/pr-bar")
     ]
 )

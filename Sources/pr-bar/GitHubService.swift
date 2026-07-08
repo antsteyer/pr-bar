@@ -89,6 +89,7 @@ struct GitHubService: Sendable {
           createdAt
           isDraft
           mergeable
+          reviewDecision
           headRefName
           baseRefName
           repository { nameWithOwner }
