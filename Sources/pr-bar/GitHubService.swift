@@ -97,6 +97,9 @@ struct GitHubService: Sendable {
           commits(last: 1) {
             nodes { commit { statusCheckRollup { state } } }
           }
+          labels(first: 10) {
+            nodes { name color }
+          }
           assignees(first: 5) {
             nodes { login avatarUrl }
           }

@@ -150,6 +150,78 @@ private struct AvatarCluster: View {
     }
 }
 
+private extension PRLabel {
+    /// Parses GitHub's hex colour, falling back to grey when it is malformed.
+    var components: (red: Double, green: Double, blue: Double) {
+        var hex = color.trimmingCharacters(in: .whitespaces)
+        if hex.hasPrefix("#") { hex.removeFirst() }
+        guard hex.count == 6, let value = UInt32(hex, radix: 16) else { return (0.5, 0.5, 0.5) }
+        return (
+            Double((value >> 16) & 0xFF) / 255,
+            Double((value >> 8) & 0xFF) / 255,
+            Double(value & 0xFF) / 255
+        )
+    }
+
+    var swiftUIColor: Color {
+        let (red, green, blue) = components
+        return Color(red: red, green: green, blue: blue)
+    }
+
+    /// The same colour nudged toward the readable end of the current appearance:
+    /// GitHub lets people pick near-black or near-white labels, which vanish otherwise.
+    func readableColor(for scheme: ColorScheme) -> Color {
+        let (red, green, blue) = components
+        let luminance = 0.299 * red + 0.587 * green + 0.114 * blue
+        if scheme == .dark, luminance < 0.45 {
+            let mix = (0.45 - luminance) / 0.45
+            return Color(
+                red: red + (1 - red) * mix,
+                green: green + (1 - green) * mix,
+                blue: blue + (1 - blue) * mix
+            )
+        }
+        if scheme == .light, luminance > 0.6 {
+            let mix = (luminance - 0.6) / 0.4 * 0.6
+            return Color(red: red * (1 - mix), green: green * (1 - mix), blue: blue * (1 - mix))
+        }
+        return Color(red: red, green: green, blue: blue)
+    }
+}
+
+private struct LabelCluster: View {
+    let labels: [PRLabel]
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(labels.prefix(3)) { label in
+                Text(label.name)
+                    .font(.system(size: 10, weight: .medium))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .foregroundStyle(label.readableColor(for: colorScheme))
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 1)
+                    .background(label.swiftUIColor.opacity(0.2))
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(label.swiftUIColor.opacity(0.4), lineWidth: 0.5)
+                    )
+                    .help(label.name)
+            }
+
+            if labels.count > 3 {
+                Text("+\(labels.count - 3)")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+                    .help(labels.dropFirst(3).map(\.name).joined(separator: ", "))
+            }
+        }
+    }
+}
+
 private extension PullRequest.ReviewStatus {
     var icon: String {
         switch self {
@@ -231,6 +303,10 @@ private struct PRRow: View {
                         .font(.system(size: 13, weight: .medium))
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
+
+                    if !pr.labelList.isEmpty {
+                        LabelCluster(labels: pr.labelList)
+                    }
 
                     HStack(spacing: 6) {
                         Text("#\(pr.number)")

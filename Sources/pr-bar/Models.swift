@@ -30,6 +30,14 @@ enum CheckState: Equatable {
     case success, failure, pending, none
 }
 
+/// A GitHub label; `color` is a hex string without the leading `#`.
+struct PRLabel: Decodable, Identifiable {
+    let name: String
+    let color: String
+
+    var id: String { name }
+}
+
 struct Person: Decodable, Identifiable {
     let login: String
     let avatarUrl: String
@@ -47,6 +55,7 @@ struct PullRequest: Identifiable, Decodable {
     let baseRefName: String
     let repository: Repository
     let author: Author?
+    let labels: LabelConnection
     let mergeable: String?
     let reviewDecision: String?
     let commits: CommitConnection
@@ -58,6 +67,9 @@ struct PullRequest: Identifiable, Decodable {
 
     /// People assigned to the PR.
     var assigneePeople: [Person] { assignees.nodes }
+
+    /// Labels attached to the PR.
+    var labelList: [PRLabel] { labels.nodes }
 
     /// Users requested for review (Team reviewers, which have no avatar, are dropped).
     var reviewerPeople: [Person] {
@@ -125,6 +137,10 @@ struct PullRequest: Identifiable, Decodable {
 
     struct UserConnection: Decodable {
         let nodes: [Person]
+    }
+
+    struct LabelConnection: Decodable {
+        let nodes: [PRLabel]
     }
 
     struct ReviewRequestConnection: Decodable {
