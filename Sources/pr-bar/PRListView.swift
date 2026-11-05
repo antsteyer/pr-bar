@@ -19,7 +19,7 @@ struct PRListView: View {
 
                     section(title: "To review", prs: store.reviewRequested, emptyText: "Nothing to review 🎉") { $0.assigneePeople }
 
-                    section(title: "My PRs", prs: store.authored, emptyText: "No open PRs") { $0.reviewerPeople }
+                    section(title: "My PRs", prs: store.authored, emptyText: "No open PRs", showsReviewsToAddress: true) { $0.reviewerPeople }
                 }
                 .padding(12)
             }
@@ -68,7 +68,7 @@ struct PRListView: View {
         .padding(.vertical, 8)
     }
 
-    private func section(title: String, prs: [PullRequest], emptyText: String, people: @escaping (PullRequest) -> [Person]) -> some View {
+    private func section(title: String, prs: [PullRequest], emptyText: String, showsReviewsToAddress: Bool = false, people: @escaping (PullRequest) -> [Person]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title.uppercased())
                 .font(.system(size: 11, weight: .semibold))
@@ -86,7 +86,7 @@ struct PRListView: View {
                             .foregroundStyle(.secondary)
 
                         ForEach(group.prs) { pr in
-                            PRRow(pr: pr, people: people(pr))
+                            PRRow(pr: pr, people: people(pr), reviewersToAddress: showsReviewsToAddress ? pr.reviewersAwaitingResponse : [])
                         }
                     }
                 }
@@ -222,6 +222,31 @@ private struct LabelCluster: View {
     }
 }
 
+private struct ToAddressBadge: View {
+    let reviewers: [String]
+
+    private var text: String {
+        let others = reviewers.count > 1 ? " +\(reviewers.count - 1)" : ""
+        return "To address · \(reviewers[0])\(others)"
+    }
+
+    var body: some View {
+        HStack(spacing: 3) {
+            Image(systemName: "exclamationmark.bubble.fill")
+            Text(text)
+                .lineLimit(1)
+                .truncationMode(.tail)
+        }
+        .font(.system(size: 10, weight: .semibold))
+        .foregroundStyle(.black)
+        .padding(.horizontal, 5)
+        .padding(.vertical, 1)
+        .background(Color.orange)
+        .clipShape(RoundedRectangle(cornerRadius: 4))
+        .help("Waiting on you: \(reviewers.joined(separator: ", "))")
+    }
+}
+
 private extension PullRequest.ReviewStatus {
     var icon: String {
         switch self {
@@ -274,6 +299,7 @@ private extension CheckState {
 private struct PRRow: View {
     let pr: PullRequest
     let people: [Person]
+    let reviewersToAddress: [String]
     @State private var showBranch = false
 
     var body: some View {
@@ -303,6 +329,10 @@ private struct PRRow: View {
                         .font(.system(size: 13, weight: .medium))
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
+
+                    if !reviewersToAddress.isEmpty {
+                        ToAddressBadge(reviewers: reviewersToAddress)
+                    }
 
                     if !pr.labelList.isEmpty {
                         LabelCluster(labels: pr.labelList)

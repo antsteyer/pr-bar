@@ -102,6 +102,25 @@ struct PullRequest: Identifiable, Decodable {
         }
     }
 
+    /// Reviewers whose last word is a comment or a change request and who were not asked to
+    /// review again. Replying in a thread after approving also creates a COMMENTED review, so
+    /// an approval stands until a later change request or dismissal.
+    var reviewersAwaitingResponse: [String] {
+        let requestedLogins = Set(reviewRequests.nodes.compactMap { $0.requestedReviewer?.login })
+        let reviewsByLogin = Dictionary(
+            grouping: reviews.nodes.filter { $0.author != nil && $0.author?.login != author?.login },
+            by: { $0.author?.login ?? "" }
+        )
+        return reviewsByLogin
+            .filter { login, reviews in
+                guard !requestedLogins.contains(login), let latest = reviews.last?.state else { return false }
+                let latestDecision = reviews.last { $0.state != "COMMENTED" }?.state
+                return latest == "CHANGES_REQUESTED" || (latest == "COMMENTED" && latestDecision != "APPROVED")
+            }
+            .keys
+            .sorted()
+    }
+
     var checkState: CheckState {
         guard let state = commits.nodes.first?.commit.statusCheckRollup?.state else { return .none }
         switch state {

@@ -103,7 +103,7 @@ struct GitHubService: Sendable {
           assignees(first: 5) {
             nodes { login avatarUrl }
           }
-          reviewRequests(first: 5) {
+          reviewRequests(first: 20) {
             nodes { requestedReviewer { ... on User { login avatarUrl } } }
           }
           reviews(last: 50) {
