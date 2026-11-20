@@ -7,6 +7,11 @@ A macOS menu bar app that displays your GitHub pull requests:
 
 For each PR: CI status (✅/❌/🟡), repo, number, draft badge, age. Click to open the PR in your browser. Auto-refreshes every 3 minutes + manual refresh button.
 
+On **My PRs**, two badges tell what to do next:
+
+- **To address** (orange) — a reviewer's latest review is a comment or a change request, and they were not asked to review again.
+- **Ready to merge** (green) — the PR is approved, GitHub reports it as mergeable with every check passing (`mergeStateStatus` `CLEAN`), and no review request is still pending.
+
 ## Requirements
 
 - macOS 14+
@@ -20,26 +25,27 @@ The app shells out to `gh` — no token to manage. Since a GUI app does not inhe
 
 Run `which gh` and update the line if needed.
 
-## Run
+## Build & run
+
+Notifications only work from a signed `.app` bundle: the bare binary (`swift run`) crashes on launch.
 
 ```bash
-swift run
+./make-app.sh        # builds a release, bundles and ad-hoc signs pr-bar.app
+open -n pr-bar.app   # -n starts it even when the installed copy is running
 ```
 
-The terminal stays busy while the app is running (Ctrl-C or Quit from the menu to close).
-
-## Build release & run in background
+## Install
 
 ```bash
-swift build -c release
-./.build/release/PRBar &
+./make-app.sh
+rm -rf /Applications/pr-bar.app && cp -R pr-bar.app /Applications/
 ```
 
-You can also copy the binary anywhere and add it to your login items.
+Quit the running app from its menu first, then reopen `/Applications/pr-bar.app`.
 
 ## Auto-start on login (LaunchAgent)
 
-A LaunchAgent can be installed at `~/Library/LaunchAgents/com.antsteyer.prbar.plist` pointing to `.build/release/PRBar`. It starts the app on every login.
+A LaunchAgent can be installed at `~/Library/LaunchAgents/com.antsteyer.prbar.plist`, running `/usr/bin/open /Applications/pr-bar.app` with `RunAtLoad`. It starts the app on every login.
 
 ```bash
 # Stop (until next login)
@@ -49,7 +55,7 @@ launchctl unload ~/Library/LaunchAgents/com.antsteyer.prbar.plist
 launchctl load -w ~/Library/LaunchAgents/com.antsteyer.prbar.plist
 ```
 
-`KeepAlive` is set to `false`: the Quit button properly closes the app. Do not delete the project folder (the plist references the binary inside it).
+`KeepAlive` is set to `false`: the Quit button properly closes the app.
 
 ## Open in Xcode
 
