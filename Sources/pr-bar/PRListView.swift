@@ -19,7 +19,7 @@ struct PRListView: View {
 
                     section(title: "To review", prs: store.reviewRequested, emptyText: "Nothing to review 🎉") { $0.assigneePeople }
 
-                    section(title: "My PRs", prs: store.authored, emptyText: "No open PRs", showsReviewsToAddress: true) { $0.reviewerPeople }
+                    section(title: "My PRs", prs: store.authored, emptyText: "No open PRs", isAuthored: true) { $0.reviewerPeople }
                 }
                 .padding(12)
             }
@@ -68,7 +68,7 @@ struct PRListView: View {
         .padding(.vertical, 8)
     }
 
-    private func section(title: String, prs: [PullRequest], emptyText: String, showsReviewsToAddress: Bool = false, people: @escaping (PullRequest) -> [Person]) -> some View {
+    private func section(title: String, prs: [PullRequest], emptyText: String, isAuthored: Bool = false, people: @escaping (PullRequest) -> [Person]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title.uppercased())
                 .font(.system(size: 11, weight: .semibold))
@@ -86,7 +86,12 @@ struct PRListView: View {
                             .foregroundStyle(.secondary)
 
                         ForEach(group.prs) { pr in
-                            PRRow(pr: pr, people: people(pr), reviewersToAddress: showsReviewsToAddress ? pr.reviewersAwaitingResponse : [])
+                            PRRow(
+                                pr: pr,
+                                people: people(pr),
+                                reviewersToAddress: isAuthored ? pr.reviewersAwaitingResponse : [],
+                                showsReadyToMerge: isAuthored && pr.isReadyToMerge
+                            )
                         }
                     }
                 }
@@ -247,6 +252,32 @@ private struct ToAddressBadge: View {
     }
 }
 
+private struct ReadyToMergeBadge: View {
+    let approvers: [String]
+
+    private var text: String {
+        guard let first = approvers.first else { return "Ready to merge" }
+        let others = approvers.count > 1 ? " +\(approvers.count - 1)" : ""
+        return "Ready to merge · \(first)\(others)"
+    }
+
+    var body: some View {
+        HStack(spacing: 3) {
+            Image(systemName: "arrow.triangle.merge")
+            Text(text)
+                .lineLimit(1)
+                .truncationMode(.tail)
+        }
+        .font(.system(size: 10, weight: .semibold))
+        .foregroundStyle(.black)
+        .padding(.horizontal, 5)
+        .padding(.vertical, 1)
+        .background(Color.green)
+        .clipShape(RoundedRectangle(cornerRadius: 4))
+        .help(approvers.isEmpty ? "Approved, CI green, no conflict" : "Approved by \(approvers.joined(separator: ", ")), CI green, no conflict")
+    }
+}
+
 private extension PullRequest.ReviewStatus {
     var icon: String {
         switch self {
@@ -300,6 +331,7 @@ private struct PRRow: View {
     let pr: PullRequest
     let people: [Person]
     let reviewersToAddress: [String]
+    let showsReadyToMerge: Bool
     @State private var showBranch = false
 
     var body: some View {
@@ -330,8 +362,16 @@ private struct PRRow: View {
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
 
-                    if !reviewersToAddress.isEmpty {
-                        ToAddressBadge(reviewers: reviewersToAddress)
+                    if showsReadyToMerge || !reviewersToAddress.isEmpty {
+                        HStack(spacing: 4) {
+                            if showsReadyToMerge {
+                                ReadyToMergeBadge(approvers: pr.approvers)
+                            }
+
+                            if !reviewersToAddress.isEmpty {
+                                ToAddressBadge(reviewers: reviewersToAddress)
+                            }
+                        }
                     }
 
                     if !pr.labelList.isEmpty {

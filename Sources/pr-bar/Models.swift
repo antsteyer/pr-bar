@@ -57,6 +57,7 @@ struct PullRequest: Identifiable, Decodable {
     let author: Author?
     let labels: LabelConnection
     let mergeable: String?
+    let mergeStateStatus: String?
     let reviewDecision: String?
     let commits: CommitConnection
     let assignees: UserConnection
@@ -81,6 +82,24 @@ struct PullRequest: Identifiable, Decodable {
     }
 
     var hasConflicts: Bool { mergeable == "CONFLICTING" }
+
+    /// GitHub's own verdict: CLEAN means approved per branch protection, no conflict and no
+    /// failing or pending check, so the merge button is green. A pending review request, team
+    /// included, means someone is still expected to weigh in.
+    var isReadyToMerge: Bool {
+        !isDraft && reviewDecision == "APPROVED" && mergeStateStatus == "CLEAN" && reviewRequests.nodes.isEmpty
+    }
+
+    /// Reviewers whose latest decision (comments aside) is an approval.
+    var approvers: [String] {
+        Dictionary(
+            grouping: reviews.nodes.filter { $0.author != nil && $0.author?.login != author?.login },
+            by: { $0.author?.login ?? "" }
+        )
+        .filter { _, reviews in reviews.last { $0.state != "COMMENTED" }?.state == "APPROVED" }
+        .keys
+        .sorted()
+    }
 
     enum ReviewStatus: Equatable {
         case approved, changesRequested, commented, none
